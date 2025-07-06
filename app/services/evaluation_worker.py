@@ -67,7 +67,8 @@ class EvaluationWorker:
             await self._update_run_status(run.id, RunStatus.RUNNING)
             
             # Process dataset items
-            dataset_items = job_data.get("dataset_items", [])
+            dataset_ids = json.loads(job_data["dataset_ids"])
+            dataset_items = await self._get_dataset_items(dataset_ids)
             total_items = len(dataset_items)
             
             if total_items == 0:
@@ -96,6 +97,20 @@ class EvaluationWorker:
             await self.redis_queue.update_job_status(job_id, "completed")
             
             print(f"Job {job_id} completed successfully")
+
+            # Get evaluation results for completed job
+            evaluation_results = []
+            async with self.db as session:
+                results_query = select(EvaluationResult).where(
+                    EvaluationResult.experiment_run_id == experiment_run_id
+                )
+                results = await session.execute(results_query)
+                evaluation_results = results.scalars().all()
+            
+            return {
+                "status": "completed",
+                "results": evaluation_results,
+            }
             
         except Exception as e:
             print(f"Job {job_id} failed: {e}")
@@ -106,6 +121,11 @@ class EvaluationWorker:
                 run = await self._get_experiment_run(experiment_run_id)
                 if run:
                     await self._update_run_status(run.id, RunStatus.FAILED)
+
+            return {
+                "status": "failed",
+                "error": str(e)
+            }
     
     def _batch_items(self, items: List[Dict[str, Any]], batch_size: int):
         """Split items into batches"""
@@ -170,6 +190,7 @@ class EvaluationWorker:
         result = EvaluationResult(
             experiment_run_id=experiment_run_id,
             input_data=input_data,
+            dataset_item_id=item["id"],
             expected_output=expected_output,
             actual_output=actual_output,
             custom_metrics=scores,
@@ -260,25 +281,51 @@ class EvaluationWorker:
         
         return aggregated
     
-    async def _get_experiment_run(self, run_id: str) -> Optional[ExperimentRun]:
+    async def _get_dataset_items(self, dataset_ids: List[int]) -> List[Dict[str, Any]]:
+        """Get dataset items by their IDs"""
+        try:
+            # Query dataset items
+            stmt = select(DatasetItem).where(DatasetItem.id.in_(dataset_ids))
+            result = await self.db.execute(stmt)
+            dataset_items = result.scalars().all()
+            
+            # Convert to dictionary format for processing
+            items = []
+            for item in dataset_items:
+                items.append({
+                    "id": item.id,
+                    "input": item.input_data,
+                    "expected": item.expected_output,
+                    "dataset_id": item.dataset_id,
+                    "created_at": item.created_at.isoformat() if item.created_at else None
+                })
+            
+            print(f"Retrieved {len(items)} dataset items")
+            return items
+            
+        except Exception as e:
+            print(f"Error retrieving dataset items: {e}")
+            return []
+
+    async def _get_experiment_run(self, id: str) -> Optional[ExperimentRun]:
         """Get experiment run by ID"""
-        stmt = select(ExperimentRun).where(ExperimentRun.run_id == run_id)
+        stmt = select(ExperimentRun).where(ExperimentRun.id == id)
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
     
-    async def _update_run_status(self, run_id: int, status: RunStatus):
+    async def _update_run_status(self, id: str, status: RunStatus):
         """Update experiment run status"""
-        stmt = update(ExperimentRun).where(ExperimentRun.id == run_id).values(
+        stmt = update(ExperimentRun).where(ExperimentRun.id == id).values(
             status=status,
             started_at=datetime.utcnow() if status == RunStatus.RUNNING else None
         )
         await self.db.execute(stmt)
         await self.db.commit()
     
-    async def _update_run_completion(self, run_id: int, metrics: Dict[str, Any], 
+    async def _update_run_completion(self, id: str, metrics: Dict[str, Any], 
                                    total_items: int, completed_items: int):
         """Update experiment run with completion data"""
-        stmt = update(ExperimentRun).where(ExperimentRun.id == run_id).values(
+        stmt = update(ExperimentRun).where(ExperimentRun.id == id).values(
             status=RunStatus.COMPLETED,
             completed_at=datetime.utcnow(),
             total_items=total_items,

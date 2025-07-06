@@ -3,7 +3,7 @@ import time
 import httpx
 from typing import Dict, Any, Optional
 from app.config import settings
-
+import pdb
 
 class AIModelService:
     """Service for calling different AI model providers"""
@@ -19,7 +19,8 @@ class AIModelService:
         
         # Format the prompt using the template
         template = prompt_config.get("template", "{input}")
-        formatted_prompt = template.format(**input_data)
+        # formatted_prompt = template.format(**input_data)
+        formatted_prompt = template.format(input=input_data)
         
         start_time = time.time()
         
