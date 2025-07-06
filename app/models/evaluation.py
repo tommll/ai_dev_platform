@@ -36,4 +36,17 @@ class EvaluationResult(Base):
     dataset_item = relationship("DatasetItem")
     
     def __repr__(self):
-        return f"<EvaluationResult(id={self.id}, experiment_run_id={self.experiment_run_id}, accuracy={self.accuracy_score})>" 
+        return (f"<EvaluationResult("
+                f"id={self.id}, "
+                f"experiment_run_id={self.experiment_run_id}, "
+                f"input_data={self.input_data}, "
+                f"expected_output={self.expected_output}, "
+                f"actual_output={self.actual_output}, "
+                f"accuracy={self.accuracy_score}, "
+                f"latency={self.latency_ms}, "
+                f"cost={self.cost_usd}, "
+                f"custom_metrics={self.custom_metrics}, "
+                f"is_success={self.is_success}, "
+                f"error_message={self.error_message}, "
+                f"dataset_item_id={self.dataset_item_id}, "
+                f"created_at={self.created_at})>")
