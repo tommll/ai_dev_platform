@@ -5,9 +5,14 @@
   - [x] redis
   - [x] server
 
-- [ ] Test connection scripts
+- [x] Test connection scripts
   - [x] postgres
   - [ ] timescale
   - [x] redis
   - [x] worker
+
+- [x] Core functionalities
+  - [x] Running evaluation
+
+- 
 
