@@ -12,6 +12,11 @@ import { Progress } from "@/components/ui/progress"
 import { Separator } from "@/components/ui/separator"
 import { ReviewModal } from "@/components/review-modal"
 
+interface ExperimentDashboardProps {
+  onTabChange: (tab: string) => void
+  onShowReview: () => void
+}
+
 // Mock data based on the image
 const experimentData = [
   {
@@ -112,7 +117,7 @@ const scoreMetrics = {
   },
 }
 
-export function ExperimentDashboard() {
+export function ExperimentDashboard({ onTabChange, onShowReview }: ExperimentDashboardProps) {
   const [selectedModels, setSelectedModels] = useState(["one", "two", "three", "four"])
   const [diffMode, setDiffMode] = useState(true)
   const [showReviewModal, setShowReviewModal] = useState(false)
@@ -132,16 +137,24 @@ export function ExperimentDashboard() {
               <Button variant="ghost" className="text-sm font-medium">
                 Experiments
               </Button>
-              <Button variant="ghost" className="text-sm text-muted-foreground">
+              <Button variant="ghost" className="text-sm text-muted-foreground" onClick={() => onTabChange("library")}>
                 Library
               </Button>
-              <Button variant="ghost" className="text-sm text-muted-foreground">
+              <Button variant="ghost" className="text-sm text-muted-foreground" onClick={() => onTabChange("logs")}>
                 Logs
               </Button>
-              <Button variant="ghost" className="text-sm text-muted-foreground">
+              <Button
+                variant="ghost"
+                className="text-sm text-muted-foreground"
+                onClick={() => onTabChange("playgrounds")}
+              >
                 Playgrounds
               </Button>
-              <Button variant="ghost" className="text-sm text-muted-foreground">
+              <Button
+                variant="ghost"
+                className="text-sm text-muted-foreground"
+                onClick={() => onTabChange("configuration")}
+              >
                 Configuration
               </Button>
             </nav>
@@ -181,7 +194,7 @@ export function ExperimentDashboard() {
               <span className="text-sm">Diff</span>
               <Switch checked={diffMode} onCheckedChange={setDiffMode} />
             </div>
-            <Button variant="outline" size="sm" onClick={() => setShowReviewModal(true)}>
+            <Button variant="outline" size="sm" onClick={onShowReview}>
               <Eye className="w-4 h-4 mr-2" />
               Review
             </Button>
@@ -484,4 +497,3 @@ export function ExperimentDashboard() {
     </div>
   )
 }
-
