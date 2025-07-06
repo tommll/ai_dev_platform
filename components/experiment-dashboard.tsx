@@ -10,6 +10,7 @@ import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Progress } from "@/components/ui/progress"
 import { Separator } from "@/components/ui/separator"
+import { ReviewModal } from "@/components/review-modal"
 
 // Mock data based on the image
 const experimentData = [
@@ -114,6 +115,7 @@ const scoreMetrics = {
 export function ExperimentDashboard() {
   const [selectedModels, setSelectedModels] = useState(["one", "two", "three", "four"])
   const [diffMode, setDiffMode] = useState(true)
+  const [showReviewModal, setShowReviewModal] = useState(false)
 
   return (
     <div className="min-h-screen bg-background">
@@ -179,7 +181,7 @@ export function ExperimentDashboard() {
               <span className="text-sm">Diff</span>
               <Switch checked={diffMode} onCheckedChange={setDiffMode} />
             </div>
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" onClick={() => setShowReviewModal(true)}>
               <Eye className="w-4 h-4 mr-2" />
               Review
             </Button>
@@ -478,6 +480,8 @@ export function ExperimentDashboard() {
           </div>
         </div>
       </div>
+      <ReviewModal open={showReviewModal} onOpenChange={setShowReviewModal} />
     </div>
   )
 }
+
