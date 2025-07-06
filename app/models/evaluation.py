@@ -25,7 +25,7 @@ class EvaluationResult(Base):
     error_message = Column(Text)
     
     # Foreign keys
-    experiment_run_id = Column(Integer, ForeignKey("experiment_runs.id"), nullable=False)
+    experiment_run_id = Column(Text, ForeignKey("experiment_runs.id"), nullable=False)
     dataset_item_id = Column(Integer, ForeignKey("dataset_items.id"), nullable=False)
     
     # Timestamps

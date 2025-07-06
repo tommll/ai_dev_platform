@@ -52,8 +52,7 @@ class Experiment(Base):
 class ExperimentRun(Base):
     __tablename__ = "experiment_runs"
     
-    id = Column(Integer, primary_key=True, index=True)
-    run_id = Column(String(100), unique=True, index=True, nullable=False)
+    id = Column(Text, primary_key=True, unique=True, index=True)
     status = Column(Enum(RunStatus), default=RunStatus.PENDING)
     
     # Results
@@ -75,4 +74,4 @@ class ExperimentRun(Base):
     evaluation_results = relationship("EvaluationResult", back_populates="experiment_run", cascade="all, delete-orphan")
     
     def __repr__(self):
-        return f"<ExperimentRun(id={self.id}, run_id='{self.run_id}', status='{self.status}')>" 
+        return f"<ExperimentRun(id={self.id}, id='{self.id}', status='{self.status}')>" 
