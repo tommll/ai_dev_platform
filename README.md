@@ -2,6 +2,8 @@
 
 A FastAPI-based platform for managing LLM experiments, evaluations, and production monitoring with Redis queuing and TimescaleDB for time-series metrics.
 
+* Design doc: https://sugar-april-5dc.notion.site/LLM-development-platform-228723c39f3c802aa92fed196d4489dc?source=copy_link
+
 ## Features
 
 - **Multi-tenant Architecture**: Organizations, projects, and user management
