@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse
 
 from app.config import settings
 from app.database import init_db, close_db
-from app.api.routes import evaluation
+from app.api.routes import evaluation, auth, prompts, datasets, experiments, observability
 from app.services.evaluation_worker import EvaluationWorker
 from app.database import AsyncSessionLocal
 
@@ -55,6 +55,11 @@ app.add_middleware(
 )
 
 # Include routers
+app.include_router(auth.router, prefix=settings.api_v1_prefix)
+app.include_router(prompts.router, prefix=settings.api_v1_prefix)
+app.include_router(datasets.router, prefix=settings.api_v1_prefix)
+app.include_router(experiments.router, prefix=settings.api_v1_prefix)
+app.include_router(observability.router, prefix=settings.api_v1_prefix)
 app.include_router(evaluation.router, prefix=settings.api_v1_prefix)
 
 
