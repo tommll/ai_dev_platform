@@ -40,7 +40,7 @@ export function useExperiments(projectId: number) {
             }
 
             if (response.data) {
-                setExperiments(prev => [...prev, response.data]);
+                setExperiments(prev => [...prev, response.data as Experiment]);
                 return response.data;
             }
 
@@ -80,7 +80,24 @@ export function useExperimentRuns(experimentId: number) {
             if (response.error) {
                 throw new Error(response.error);
             }
-            setRuns(response.data || []);
+
+            const runs = response.data || [];
+
+            // For completed runs, fetch their evaluation results
+            const runsWithResults = await Promise.all(runs.map(async (run) => {
+                if (run.status === 'completed') {
+                    const resultsResponse = await apiClient.getExperimentRunResults(experimentId, run.id);
+                    if (!resultsResponse.error && resultsResponse.data) {
+                        return {
+                            ...run,
+                            evaluationResults: resultsResponse.data
+                        };
+                    }
+                }
+                return run;
+            }));
+
+            setRuns(runsWithResults);
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to fetch runs');
         } finally {
@@ -99,7 +116,7 @@ export function useExperimentRuns(experimentId: number) {
             }
 
             if (response.data) {
-                setRuns(prev => [...prev, response.data]);
+                setRuns(prev => [...prev, response.data as ExperimentRun]);
                 return response.data;
             }
 
