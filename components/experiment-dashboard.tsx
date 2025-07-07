@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { ArrowLeft, ChevronDown, Filter, MoreHorizontal, Settings, Eye, Lock, BarChart3 } from "lucide-react"
+import { ArrowLeft, ChevronDown, Filter, MoreHorizontal, Settings, Eye, Lock, BarChart3, LogOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -11,13 +11,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Progress } from "@/components/ui/progress"
 import { Separator } from "@/components/ui/separator"
 import { ReviewModal } from "@/components/review-modal"
+import { useAuth } from "@/hooks/useAuth"
+import { useExperiments } from "@/hooks/useExperiments"
+import { usePrompts } from "@/hooks/usePrompts"
+import { useDatasets } from "@/hooks/useDatasets"
 
 interface ExperimentDashboardProps {
   onTabChange: (tab: string) => void
   onShowReview: () => void
 }
 
-// Mock data based on the image
+// Mock data for demonstration (in real app, this would come from API)
 const experimentData = [
   {
     id: "eval-1",
@@ -118,9 +122,20 @@ const scoreMetrics = {
 }
 
 export function ExperimentDashboard({ onTabChange, onShowReview }: ExperimentDashboardProps) {
+  const { user, logout } = useAuth()
   const [selectedModels, setSelectedModels] = useState(["one", "two", "three", "four"])
   const [diffMode, setDiffMode] = useState(true)
   const [showReviewModal, setShowReviewModal] = useState(false)
+  const [currentProjectId, setCurrentProjectId] = useState(1) // Default project ID
+
+  // API hooks to fetch real data
+  const { experiments, isLoading: experimentsLoading, error: experimentsError } = useExperiments(currentProjectId)
+  const { prompts, isLoading: promptsLoading } = usePrompts(currentProjectId)
+  const { datasets, isLoading: datasetsLoading } = useDatasets(currentProjectId)
+
+  const handleLogout = () => {
+    logout()
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -130,7 +145,9 @@ export function ExperimentDashboard({ onTabChange, onShowReview }: ExperimentDas
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 bg-black rounded-full" />
-              <span className="text-sm text-muted-foreground">Acmecorp / Model comparison</span>
+              <span className="text-sm text-muted-foreground">
+                {user?.organization_id === 1 ? "Acme Corp" : "Organization"} / Model comparison
+              </span>
               <ChevronDown className="w-4 h-4 text-muted-foreground" />
             </div>
             <nav className="flex items-center gap-6">
@@ -163,10 +180,49 @@ export function ExperimentDashboard({ onTabChange, onShowReview }: ExperimentDas
             <Button variant="ghost" size="icon">
               <Settings className="w-4 h-4" />
             </Button>
-            <div className="w-8 h-8 bg-muted rounded-full" />
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">
+                {user?.email}
+              </span>
+              <Button variant="ghost" size="icon" onClick={handleLogout}>
+                <LogOut className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
         </div>
       </header>
+
+      {/* API Data Status */}
+      <div className="px-6 py-3 border-b bg-muted/20">
+        <div className="flex items-center gap-4 text-sm">
+          <div className="flex items-center gap-2">
+            <span className="font-medium">API Status:</span>
+            {experimentsLoading ? (
+              <Badge variant="secondary">Loading experiments...</Badge>
+            ) : experimentsError ? (
+              <Badge variant="destructive">Error: {experimentsError}</Badge>
+            ) : (
+              <Badge variant="outline">{experiments.length} experiments</Badge>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="font-medium">Prompts:</span>
+            {promptsLoading ? (
+              <Badge variant="secondary">Loading...</Badge>
+            ) : (
+              <Badge variant="outline">{prompts.length} prompts</Badge>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="font-medium">Datasets:</span>
+            {datasetsLoading ? (
+              <Badge variant="secondary">Loading...</Badge>
+            ) : (
+              <Badge variant="outline">{datasets.length} datasets</Badge>
+            )}
+          </div>
+        </div>
+      </div>
 
       {/* Experiment Header */}
       <div className="border-b px-6 py-4">
