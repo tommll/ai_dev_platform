@@ -63,6 +63,8 @@ All requested API endpoints have been implemented and tested successfully. The s
 
 | Method | Endpoint | Status | Description |
 |--------|----------|--------|-------------|
+| `GET` | `/api/v1/experiments` | ✅ Implemented | Get all experiments (with optional project filter) |
+| `GET` | `/api/v1/experiments/{id}/runs` | ✅ Implemented | Get all runs for an experiment |
 | `POST` | `/api/v1/experiments` | ✅ Implemented | Create new experiment |
 | `POST` | `/api/v1/experiments/{id}/runs` | ✅ Implemented | Start experiment run |
 | `GET` | `/api/v1/experiments/{id}/runs/{run_id}/status` | ✅ Implemented | Get run status |
@@ -74,6 +76,8 @@ All requested API endpoints have been implemented and tested successfully. The s
 - Real-time status monitoring
 - Comprehensive result tracking
 - Cancellation support
+- Project-based access control
+- Organization-based security
 
 ---
 

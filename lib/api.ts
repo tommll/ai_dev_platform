@@ -395,6 +395,12 @@ class ApiClient {
         return this.request(`/experiments/${experimentId}/runs/${runId}/status`);
     }
 
+    async getExperimentRuns(experimentId: number): Promise<ApiResponse<ExperimentRun[]>> {
+        return this.request<ExperimentRun[]>(`/experiments/${experimentId}/runs`, {
+            method: 'GET',
+        });
+    }
+
     async getExperimentRunResults(
         experimentId: number,
         runId: string

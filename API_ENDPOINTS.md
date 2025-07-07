@@ -274,6 +274,68 @@ Create multiple dataset items in bulk.
 
 ## Experiment Execution
 
+### GET /experiments
+Get all experiments the user has access to, optionally filtered by project.
+
+**Query Parameters:**
+- `project_id` (optional): Filter experiments by project ID
+
+**Response:**
+```json
+[
+  {
+    "id": 1,
+    "name": "Customer Support Experiment",
+    "description": "Testing customer support prompt performance",
+    "status": "active",
+    "prompt_id": 1,
+    "dataset_id": 1,
+    "model_configuration": {
+      "provider": "openai",
+      "model": "gpt-3.5-turbo",
+      "temperature": 0.7,
+      "max_tokens": 1000
+    },
+    "evaluation_config": {
+      "metrics": ["accuracy", "latency", "cost"],
+      "thresholds": {
+        "accuracy": 0.8,
+        "latency": 2000
+      }
+    },
+    "project_id": 1,
+    "created_at": "2024-01-01T00:00:00Z",
+    "updated_at": null
+  }
+]
+```
+
+### GET /experiments/{experiment_id}/runs
+Get all runs for an experiment.
+
+**Response:**
+```json
+[
+  {
+    "id": "run_abc12345",
+    "run_id": "run_abc12345",
+    "status": "completed",
+    "total_items": 100,
+    "completed_items": 100,
+    "failed_items": 0,
+    "metrics": {
+      "accuracy": 0.85,
+      "latency": 1500.5,
+      "cost": 0.025
+    },
+    "experiment_id": 1,
+    "created_at": "2024-01-01T00:00:00Z",
+    "started_at": "2024-01-01T00:01:00Z",
+    "completed_at": "2024-01-01T00:05:00Z"
+  }
+]
+```
+
 ### POST /experiments
 Create a new experiment.
 
@@ -298,6 +360,34 @@ Create a new experiment.
     }
   },
   "project_id": 1
+}
+```
+
+**Response:**
+```json
+{
+  "id": 1,
+  "name": "Customer Support Experiment",
+  "description": "Testing customer support prompt performance",
+  "status": "draft",
+  "prompt_id": 1,
+  "dataset_id": 1,
+  "model_configuration": {
+    "provider": "openai",
+    "model": "gpt-3.5-turbo",
+    "temperature": 0.7,
+    "max_tokens": 1000
+  },
+  "evaluation_config": {
+    "metrics": ["accuracy", "latency", "cost"],
+    "thresholds": {
+      "accuracy": 0.8,
+      "latency": 2000
+    }
+  },
+  "project_id": 1,
+  "created_at": "2024-01-01T00:00:00Z",
+  "updated_at": null
 }
 ```
 

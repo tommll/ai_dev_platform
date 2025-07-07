@@ -76,29 +76,11 @@ export function useExperimentRuns(experimentId: number) {
             setIsLoading(true);
             setError(null);
 
-            // Note: This would need a GET /experiments/{id}/runs endpoint
-            // For now, we'll use mock data
-            const mockRuns: ExperimentRun[] = [
-                {
-                    id: "run_abc12345",
-                    run_id: "run_abc12345",
-                    status: "completed",
-                    total_items: 100,
-                    completed_items: 100,
-                    failed_items: 0,
-                    metrics: {
-                        accuracy: 0.85,
-                        latency: 1500.5,
-                        cost: 0.025
-                    },
-                    experiment_id: experimentId,
-                    created_at: new Date().toISOString(),
-                    started_at: new Date(Date.now() - 300000).toISOString(),
-                    completed_at: new Date().toISOString()
-                }
-            ];
-
-            setRuns(mockRuns);
+            const response = await apiClient.getExperimentRuns(experimentId);
+            if (response.error) {
+                throw new Error(response.error);
+            }
+            setRuns(response.data || []);
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to fetch runs');
         } finally {

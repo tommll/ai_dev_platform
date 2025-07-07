@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -15,6 +15,13 @@ interface ExperimentsListProps {
 export function ExperimentsList({ projectId }: ExperimentsListProps) {
     const { experiments, isLoading, error, createExperiment } = useExperiments(projectId)
     const [selectedExperimentId, setSelectedExperimentId] = useState<number | null>(null)
+
+    // Set selectedExperimentId to first experiment after loading
+    useEffect(() => {
+        if (!isLoading && experiments.length > 0) {
+            setSelectedExperimentId(experiments[0].id)
+        }
+    }, [isLoading, experiments])
 
     // Get runs for the selected experiment
     const { runs, createRun, cancelRun } = useExperimentRuns(selectedExperimentId || 0)
@@ -179,9 +186,9 @@ export function ExperimentsList({ projectId }: ExperimentsListProps) {
                                             <div key={run.id} className="flex items-center justify-between text-sm">
                                                 <div className="flex items-center gap-2">
                                                     <div className={`w-2 h-2 rounded-full ${run.status === 'completed' ? 'bg-green-500' :
-                                                            run.status === 'running' ? 'bg-blue-500' :
-                                                                run.status === 'failed' ? 'bg-red-500' :
-                                                                    'bg-gray-500'
+                                                        run.status === 'running' ? 'bg-blue-500' :
+                                                            run.status === 'failed' ? 'bg-red-500' :
+                                                                'bg-gray-500'
                                                         }`} />
                                                     <span>{run.run_id}</span>
                                                 </div>

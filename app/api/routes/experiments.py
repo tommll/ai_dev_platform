@@ -118,6 +118,40 @@ async def get_experiments(
     
     return experiments
 
+@router.get("/experiments/{experiment_id}/runs", response_model=List[ExperimentRunResponse])
+async def get_experiment_runs(
+    experiment_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get all runs for an experiment"""
+    # Verify experiment access
+    result = await db.execute(
+        select(Experiment).join(Project).where(
+            and_(
+                Experiment.id == experiment_id,
+                Project.organization_id == current_user.organization_id
+            )
+        )
+    )
+    experiment = result.scalar_one_or_none()
+    
+    if not experiment:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Experiment not found"
+        )
+
+    # Get all runs for the experiment
+    result = await db.execute(
+        select(ExperimentRun).where(
+            ExperimentRun.experiment_id == experiment_id
+        )
+    )
+    runs = result.scalars().all()
+    
+    return runs
+
 
 @router.post("/experiments", response_model=ExperimentResponse)
 async def create_experiment(

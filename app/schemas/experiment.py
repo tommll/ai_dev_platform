@@ -49,8 +49,7 @@ class ExperimentRunCreate(ExperimentRunBase):
 
 
 class ExperimentRunResponse(ExperimentRunBase):
-    id: int
-    run_id: str
+    id: str
     status: RunStatus
     total_items: int
     completed_items: int
