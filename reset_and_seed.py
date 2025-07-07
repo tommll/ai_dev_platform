@@ -504,6 +504,57 @@ class DatabaseResetter:
                 experiment_id=experiments[1].id
             )
         ]
+        # Create evaluation results for the completed run
+        evaluation_results = [
+            EvaluationResult(
+                input_data={"topic": "Machine Learning Basics"},
+                expected_output="Machine learning is a branch of artificial intelligence...",
+                actual_output="Machine learning is a field of AI that enables systems to learn from data...", 
+                accuracy_score=0.92,
+                latency_ms=1200.5,
+                cost_usd=0.015,
+                custom_metrics={
+                    "relevance": 0.88,
+                    "completeness": 0.85
+                },
+                is_success=True,
+                experiment_run_id=experiment_runs[0].id,
+                dataset_item_id=1
+            ),
+            EvaluationResult(
+                input_data={"topic": "Neural Networks"},
+                expected_output="Neural networks are computing systems inspired by biological neural networks...",
+                actual_output="Neural networks are AI systems modeled after the human brain...",
+                accuracy_score=0.89,
+                latency_ms=1350.2,
+                cost_usd=0.018,
+                custom_metrics={
+                    "relevance": 0.90,
+                    "completeness": 0.82
+                },
+                is_success=True,
+                experiment_run_id=experiment_runs[0].id,
+                dataset_item_id=2
+            ),
+            EvaluationResult(
+                input_data={"topic": "Deep Learning"},
+                expected_output="Deep learning is a subset of machine learning...",
+                actual_output="Deep learning uses neural networks with multiple layers...",
+                accuracy_score=0.85,
+                latency_ms=1150.8,
+                cost_usd=0.012,
+                custom_metrics={
+                    "relevance": 0.85,
+                    "completeness": 0.80
+                },
+                is_success=True,
+                experiment_run_id=experiment_runs[0].id,
+                dataset_item_id=3
+            )
+        ]
+
+        for result in evaluation_results:
+            self.session.add(result)
         
         for run in experiment_runs:
             self.session.add(run)
