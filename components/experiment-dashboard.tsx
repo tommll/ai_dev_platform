@@ -10,12 +10,17 @@ import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Progress } from "@/components/ui/progress"
 import { Separator } from "@/components/ui/separator"
-import { ReviewModal, EvaluationResult } from "@/components/review-modal"
+import { ReviewModal } from "@/components/review-modal"
 import { useAuth } from "@/hooks/useAuth"
 import { useExperiments, useExperimentRuns } from "@/hooks/useExperiments"
+import { EvaluationResult } from "@/components/review-modal"
 import { usePrompts } from "@/hooks/usePrompts"
 import { useDatasets } from "@/hooks/useDatasets"
 import { apiClient } from "@/lib/api"
+
+interface ExperimentRun {
+  id: string;
+}
 
 interface ExperimentDashboardProps {
   onTabChange: (tab: string) => void
@@ -167,15 +172,15 @@ export function ExperimentDashboard({ onTabChange, onShowReview }: ExperimentDas
     }
   }
 
-  const handleViewResults = async (run: any) => {
+  const handleViewResults = async (run: ExperimentRun) => {
     if (!selectedExperiment) return
 
     setIsLoadingResults(true)
     try {
-      const response = await apiClient.getExperimentRunResults(selectedExperiment, run.run_id)
+      const response = await apiClient.getExperimentRunResults(selectedExperiment, run.id)
       if (response.data) {
-        setEvaluationResults(response.data.evaluation_results || [])
-        setSelectedRunId(run.run_id)
+        setEvaluationResults(response.data.evaluation_results as unknown as EvaluationResult[])
+        setSelectedRunId(run.id)
         setShowReviewModal(true)
       } else {
         console.error('Failed to fetch evaluation results:', response.error)
