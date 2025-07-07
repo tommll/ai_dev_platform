@@ -97,6 +97,27 @@ async def verify_run_access(
     
     return run
 
+@router.get("/experiments", response_model=List[ExperimentResponse])
+async def get_experiments(
+    project_id: Optional[int] = None,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get all experiments the user has access to, optionally filtered by project"""
+    query = select(Experiment).join(Project).where(
+        Project.organization_id == current_user.organization_id
+    )
+    
+    if project_id is not None:
+        # Verify project access
+        await verify_project_access(project_id, current_user, db)
+        query = query.where(Experiment.project_id == project_id)
+        
+    result = await db.execute(query)
+    experiments = result.scalars().all()
+    
+    return experiments
+
 
 @router.post("/experiments", response_model=ExperimentResponse)
 async def create_experiment(

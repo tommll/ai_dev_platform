@@ -350,6 +350,9 @@ class ApiClient {
     }
 
     // Experiment methods
+    async getProjectExperiments(projectId: number): Promise<ApiResponse<Experiment[]>> {
+        return this.request<Experiment[]>(`/experiments?project_id=${projectId}`);
+    }
     async createExperiment(experimentData: {
         name: string;
         description?: string;

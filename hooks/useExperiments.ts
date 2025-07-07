@@ -11,36 +11,11 @@ export function useExperiments(projectId: number) {
             setIsLoading(true);
             setError(null);
 
-            // Note: This would need a GET /projects/{id}/experiments endpoint
-            // For now, we'll use mock data or create experiments individually
-            const mockExperiments: Experiment[] = [
-                {
-                    id: 1,
-                    name: "Customer Support Experiment",
-                    description: "Testing customer support prompt performance",
-                    status: "active",
-                    prompt_id: 1,
-                    dataset_id: 1,
-                    model_configuration: {
-                        provider: "openai",
-                        model: "gpt-3.5-turbo",
-                        temperature: 0.7,
-                        max_tokens: 1000
-                    },
-                    evaluation_config: {
-                        metrics: ["accuracy", "latency", "cost"],
-                        thresholds: {
-                            accuracy: 0.8,
-                            latency: 2000
-                        }
-                    },
-                    project_id: projectId,
-                    created_at: new Date().toISOString(),
-                    updated_at: null
-                }
-            ];
-
-            setExperiments(mockExperiments);
+            const response = await apiClient.getProjectExperiments(projectId);
+            if (response.error) {
+                throw new Error(response.error);
+            }
+            setExperiments(response.data || []);
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to fetch experiments');
         } finally {
