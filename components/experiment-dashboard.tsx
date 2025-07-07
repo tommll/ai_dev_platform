@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { ArrowLeft, ChevronDown, Filter, MoreHorizontal, Settings, Eye, Lock, BarChart3, LogOut } from "lucide-react"
+import { ArrowLeft, ChevronDown, Filter, MoreHorizontal, Settings, Eye, Lock, BarChart3, LogOut, Play, Clock, CheckCircle, XCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -10,11 +10,12 @@ import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Progress } from "@/components/ui/progress"
 import { Separator } from "@/components/ui/separator"
-import { ReviewModal } from "@/components/review-modal"
+import { ReviewModal, EvaluationResult } from "@/components/review-modal"
 import { useAuth } from "@/hooks/useAuth"
-import { useExperiments } from "@/hooks/useExperiments"
+import { useExperiments, useExperimentRuns } from "@/hooks/useExperiments"
 import { usePrompts } from "@/hooks/usePrompts"
 import { useDatasets } from "@/hooks/useDatasets"
+import { apiClient } from "@/lib/api"
 
 interface ExperimentDashboardProps {
   onTabChange: (tab: string) => void
@@ -127,14 +128,97 @@ export function ExperimentDashboard({ onTabChange, onShowReview }: ExperimentDas
   const [diffMode, setDiffMode] = useState(true)
   const [showReviewModal, setShowReviewModal] = useState(false)
   const [currentProjectId, setCurrentProjectId] = useState(1) // Default project ID
+  const [selectedExperiment, setSelectedExperiment] = useState<number | null>(null)
+  const [viewMode, setViewMode] = useState<'experiments' | 'runs'>('experiments')
+  const [evaluationResults, setEvaluationResults] = useState<EvaluationResult[]>([])
+  const [selectedRunId, setSelectedRunId] = useState<string>("")
+  const [isLoadingResults, setIsLoadingResults] = useState(false)
 
   // API hooks to fetch real data
-  const { experiments, isLoading: experimentsLoading, error: experimentsError } = useExperiments(currentProjectId)
+  const { experiments, isLoading: experimentsLoading, error: experimentsError, createExperiment } = useExperiments(currentProjectId)
   const { prompts, isLoading: promptsLoading } = usePrompts(currentProjectId)
-  const { datasets, isLoading: datasetsLoading } = useDatasets(currentProjectId)
+  // const { datasets, isLoading: datasetsLoading } = useDatasets(currentProjectId)
+
+  // Get runs for selected experiment
+  const { runs, isLoading: runsLoading, error: runsError, createRun, cancelRun } = useExperimentRuns(selectedExperiment || 0)
 
   const handleLogout = () => {
     logout()
+  }
+
+  const handleExperimentSelect = (experimentId: number) => {
+    setSelectedExperiment(experimentId)
+    setViewMode('runs')
+  }
+
+  const handleStartRun = async (experimentId: number) => {
+    try {
+      await createRun()
+    } catch (error) {
+      console.error('Failed to start experiment run:', error)
+    }
+  }
+
+  const handleCancelRun = async (runId: string) => {
+    try {
+      await cancelRun(runId)
+    } catch (error) {
+      console.error('Failed to cancel experiment run:', error)
+    }
+  }
+
+  const handleViewResults = async (run: any) => {
+    if (!selectedExperiment) return
+
+    setIsLoadingResults(true)
+    try {
+      const response = await apiClient.getExperimentRunResults(selectedExperiment, run.run_id)
+      if (response.data) {
+        setEvaluationResults(response.data.evaluation_results || [])
+        setSelectedRunId(run.run_id)
+        setShowReviewModal(true)
+      } else {
+        console.error('Failed to fetch evaluation results:', response.error)
+      }
+    } catch (error) {
+      console.error('Error fetching evaluation results:', error)
+    } finally {
+      setIsLoadingResults(false)
+    }
+  }
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return <CheckCircle className="w-4 h-4 text-green-500" />
+      case 'running':
+        return <Clock className="w-4 h-4 text-blue-500" />
+      case 'pending':
+        return <Clock className="w-4 h-4 text-yellow-500" />
+      case 'failed':
+        return <XCircle className="w-4 h-4 text-red-500" />
+      case 'cancelled':
+        return <XCircle className="w-4 h-4 text-gray-500" />
+      default:
+        return <Clock className="w-4 h-4 text-gray-500" />
+    }
+  }
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return 'bg-green-100 text-green-800'
+      case 'running':
+        return 'bg-blue-100 text-blue-800'
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800'
+      case 'failed':
+        return 'bg-red-100 text-red-800'
+      case 'cancelled':
+        return 'bg-gray-100 text-gray-800'
+      default:
+        return 'bg-gray-100 text-gray-800'
+    }
   }
 
   return (
@@ -215,12 +299,24 @@ export function ExperimentDashboard({ onTabChange, onShowReview }: ExperimentDas
           </div>
           <div className="flex items-center gap-2">
             <span className="font-medium">Datasets:</span>
-            {datasetsLoading ? (
+            {/* {datasetsLoading ? (
               <Badge variant="secondary">Loading...</Badge>
             ) : (
               <Badge variant="outline">{datasets.length} datasets</Badge>
-            )}
+            )} */}
           </div>
+          {selectedExperiment && (
+            <div className="flex items-center gap-2">
+              <span className="font-medium">Runs:</span>
+              {runsLoading ? (
+                <Badge variant="secondary">Loading...</Badge>
+              ) : runsError ? (
+                <Badge variant="destructive">Error: {runsError}</Badge>
+              ) : (
+                <Badge variant="outline">{runs.length} runs</Badge>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -228,10 +324,24 @@ export function ExperimentDashboard({ onTabChange, onShowReview }: ExperimentDas
       <div className="border-b px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => {
+                setSelectedExperiment(null)
+                setViewMode('experiments')
+              }}
+            >
               <ArrowLeft className="w-4 h-4" />
             </Button>
-            <h1 className="text-xl font-semibold">Experiment</h1>
+            <h1 className="text-xl font-semibold">
+              {viewMode === 'experiments' ? 'Experiments' : 'Experiment Runs'}
+            </h1>
+            {selectedExperiment && (
+              <span className="text-sm text-muted-foreground">
+                Experiment ID: {selectedExperiment}
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -265,31 +375,6 @@ export function ExperimentDashboard({ onTabChange, onShowReview }: ExperimentDas
         </div>
       </div>
 
-      {/* Model Selection */}
-      <div className="px-6 py-3 border-b">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className="bg-gray-100">
-              <div className="w-2 h-2 bg-gray-500 rounded-full mr-2" />
-              one
-            </Badge>
-            <span className="text-sm text-muted-foreground">compared with</span>
-            <Badge variant="outline" className="bg-purple-50">
-              <div className="w-2 h-2 bg-purple-500 rounded-full mr-2" />
-              two
-            </Badge>
-            <Badge variant="outline" className="bg-blue-50">
-              <div className="w-2 h-2 bg-blue-500 rounded-full mr-2" />
-              three
-            </Badge>
-            <Badge variant="outline" className="bg-orange-50">
-              <div className="w-2 h-2 bg-orange-500 rounded-full mr-2" />
-              four
-            </Badge>
-          </div>
-        </div>
-      </div>
-
       <div className="flex">
         {/* Main Content */}
         <div className="flex-1 p-6">
@@ -318,238 +403,303 @@ export function ExperimentDashboard({ onTabChange, onShowReview }: ExperimentDas
             </div>
           </div>
 
-          {/* Score Distribution Chart */}
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle className="text-sm font-medium">Score distribution for ExactMatch</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-end gap-1 h-20 mb-4">
-                <div className="bg-gray-500 w-8 h-16 rounded-sm" />
-                <div className="bg-purple-500 w-8 h-12 rounded-sm" />
-                <div className="bg-blue-500 w-8 h-4 rounded-sm" />
-                <div className="bg-orange-500 w-8 h-8 rounded-sm" />
-              </div>
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>0%</span>
-                <span>10%</span>
-                <span>20%</span>
-                <span>30%</span>
-                <span>40%</span>
-                <span>50%</span>
-                <span>60%</span>
-                <span>70%</span>
-                <span>80%</span>
-                <span>90%</span>
-                <span>100%</span>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Results Table */}
-          <div className="border rounded-lg">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-12"></TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Input</TableHead>
-                  <TableHead>Output</TableHead>
-                  <TableHead>Expected</TableHead>
-                  <TableHead>ExactMatch</TableHead>
-                  <TableHead>Levenstein</TableHead>
-                  <TableHead>Duration</TableHead>
-                  <TableHead>LLM</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {experimentData.map((row, index) => (
-                  <TableRow key={row.id}>
-                    <TableCell>
-                      <div className="w-4 h-4 bg-blue-500 rounded-sm flex items-center justify-center">
-                        <span className="text-xs text-white">eval</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="font-medium">eval</TableCell>
-                    <TableCell className="max-w-xs">
-                      <div className="truncate">{row.input}</div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="space-y-1">
-                        {row.outputs.map((output, i) => (
-                          <div key={i} className="flex items-center gap-2">
-                            <div className={`w-2 h-2 rounded-full ${output.color}`} />
-                            <span className="text-sm truncate max-w-xs">{output.value}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </TableCell>
-                    <TableCell>{row.expected}</TableCell>
-                    <TableCell>
-                      <div className="space-y-1">
-                        {row.outputs.map((_, i) => (
-                          <div key={i} className="text-sm">
-                            {i === 0
-                              ? row.exactMatch
-                              : i < row.levenstein.length
-                                ? row.exactMatch === "100.0%"
-                                  ? "100.0%"
-                                  : "0.0%"
-                                : ""}
-                            {row.exactMatch === "100.0%" && i > 0 && i < row.outputs.length && (
-                              <span className="text-green-600 ml-1">+100.0%</span>
+          {viewMode === 'experiments' ? (
+            /* Experiments List */
+            <div className="space-y-4">
+              {experimentsLoading ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
+                  <p className="mt-2 text-sm text-muted-foreground">Loading experiments...</p>
+                </div>
+              ) : experimentsError ? (
+                <div className="text-center py-8">
+                  <p className="text-red-500">Error loading experiments: {experimentsError}</p>
+                </div>
+              ) : experiments.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">No experiments found</p>
+                </div>
+              ) : (
+                <div className="border rounded-lg">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>ID</TableHead>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Description</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Prompt ID</TableHead>
+                        <TableHead>Dataset ID</TableHead>
+                        <TableHead>Created</TableHead>
+                        <TableHead>Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {experiments.map((experiment) => (
+                        <TableRow key={experiment.id}>
+                          <TableCell className="font-medium">{experiment.id}</TableCell>
+                          <TableCell>{experiment.name}</TableCell>
+                          <TableCell className="max-w-xs truncate">
+                            {experiment.description || 'No description'}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline">{experiment.status}</Badge>
+                          </TableCell>
+                          <TableCell>{experiment.prompt_id}</TableCell>
+                          <TableCell>{experiment.dataset_id}</TableCell>
+                          <TableCell>
+                            {new Date(experiment.created_at).toLocaleDateString()}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleExperimentSelect(experiment.id)}
+                              >
+                                <Eye className="w-4 h-4 mr-1" />
+                                View Runs
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleStartRun(experiment.id)}
+                              >
+                                <Play className="w-4 h-4 mr-1" />
+                                Start Run
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </div>
+          ) : (
+            /* Experiment Runs List */
+            <div className="space-y-4">
+              {runsLoading ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
+                  <p className="mt-2 text-sm text-muted-foreground">Loading runs...</p>
+                </div>
+              ) : runsError ? (
+                <div className="text-center py-8">
+                  <p className="text-red-500">Error loading runs: {runsError}</p>
+                </div>
+              ) : runs.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">No runs found for this experiment</p>
+                  <Button
+                    className="mt-4"
+                    onClick={() => handleStartRun(selectedExperiment!)}
+                  >
+                    <Play className="w-4 h-4 mr-2" />
+                    Start First Run
+                  </Button>
+                </div>
+              ) : (
+                <div className="border rounded-lg">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Run ID</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Progress</TableHead>
+                        <TableHead>Total Items</TableHead>
+                        <TableHead>Completed</TableHead>
+                        <TableHead>Failed</TableHead>
+                        <TableHead>Created</TableHead>
+                        <TableHead>Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {runs.map((run) => (
+                        <TableRow key={run.id}>
+                          <TableCell className="font-medium">{run.run_id}</TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              {getStatusIcon(run.status)}
+                              <Badge className={getStatusColor(run.status)}>
+                                {run.status}
+                              </Badge>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {run.total_items > 0 ? (
+                              <div className="flex items-center gap-2">
+                                <Progress
+                                  value={(run.completed_items / run.total_items) * 100}
+                                  className="w-20"
+                                />
+                                <span className="text-sm">
+                                  {Math.round((run.completed_items / run.total_items) * 100)}%
+                                </span>
+                              </div>
+                            ) : (
+                              <span className="text-sm text-muted-foreground">-</span>
                             )}
-                          </div>
-                        ))}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="space-y-1">
-                        {row.levenstein.map((score, i) => (
-                          <div key={i} className="text-sm">
-                            {score}
-                            {i === 1 && row.id === "eval-1" && <span className="text-red-500 ml-1">-40.0%</span>}
-                            {i === 2 && row.id === "eval-1" && <span className="text-green-600 ml-1">+18.2%</span>}
-                            {i === 1 && row.id === "eval-2" && <span className="text-green-600 ml-1">+18.1%</span>}
-                            {i === 1 && row.id === "eval-3" && <span className="text-green-600 ml-1">+100.0%</span>}
-                            {i === 2 && row.id === "eval-3" && <span className="text-green-600 ml-1">+99.3%</span>}
-                            {i === 3 && row.id === "eval-3" && <span className="text-green-600 ml-1">+80.0%</span>}
-                            {i === 1 && row.id === "eval-4" && <span className="text-green-600 ml-1">+100.0%</span>}
-                            {i === 0 && row.id === "eval-4" && <span className="text-green-600 ml-1">+20.0%</span>}
-                          </div>
-                        ))}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="space-y-1">
-                        {row.duration.map((duration, i) => (
-                          <div key={i} className="text-sm">
-                            {duration}
-                          </div>
-                        ))}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="space-y-1">
-                        {row.llm.map((llm, i) => (
-                          <div key={i} className="text-sm">
-                            {llm}
-                          </div>
-                        ))}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+                          </TableCell>
+                          <TableCell>{run.total_items}</TableCell>
+                          <TableCell>{run.completed_items}</TableCell>
+                          <TableCell>{run.failed_items}</TableCell>
+                          <TableCell>
+                            {new Date(run.created_at).toLocaleDateString()}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleViewResults(run)}
+                                disabled={isLoadingResults || run.status !== 'completed'}
+                              >
+                                <Eye className="w-4 h-4 mr-1" />
+                                {isLoadingResults ? 'Loading...' : 'Results'}
+                              </Button>
+                              {['pending', 'running'].includes(run.status) && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleCancelRun(run.id)}
+                                >
+                                  <XCircle className="w-4 h-4 mr-1" />
+                                  Cancel
+                                </Button>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Scores Sidebar */}
         <div className="w-80 border-l bg-muted/20 p-6">
           <h2 className="font-semibold mb-4 flex items-center justify-between">
-            Scores
+            {viewMode === 'experiments' ? 'Experiments Summary' : 'Run Summary'}
             <Button variant="ghost" size="icon">
               <Settings className="w-4 h-4" />
             </Button>
           </h2>
 
-          <div className="space-y-6">
-            {/* Levenstein */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium">Levenstein</span>
-                <span className="text-xs text-muted-foreground">5</span>
+          {viewMode === 'experiments' ? (
+            /* Experiments Summary */
+            <div className="space-y-6">
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium">Total Experiments</span>
+                </div>
+                <div className="text-2xl font-bold">{experiments.length}</div>
+                <div className="text-sm text-muted-foreground mt-1">
+                  {experiments.filter(e => e.status === 'active').length} active
+                </div>
               </div>
-              <div className="text-2xl font-bold">68.00%</div>
-              <div className="space-y-2 mt-3">
-                {scoreMetrics.levenstein.distribution.map((item, i) => (
-                  <div key={i} className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className={`w-3 h-3 rounded ${item.color}`} />
-                      <Progress value={item.value} className="w-16 h-2" />
-                    </div>
-                    <div className="text-sm">
-                      <span className="text-green-600">{item.change}</span>
-                      <span className="text-muted-foreground ml-2">+1</span>
-                    </div>
-                  </div>
-                ))}
+
+              <Separator />
+
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium">Status Distribution</span>
+                </div>
+                <div className="space-y-2">
+                  {['draft', 'active', 'completed', 'failed'].map(status => {
+                    const count = experiments.filter(e => e.status === status).length
+                    const percentage = experiments.length > 0 ? (count / experiments.length) * 100 : 0
+                    return (
+                      <div key={status} className="flex items-center justify-between">
+                        <span className="text-sm capitalize">{status}</span>
+                        <div className="flex items-center gap-2">
+                          <Progress value={percentage} className="w-16 h-2" />
+                          <span className="text-sm">{count}</span>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
               </div>
             </div>
-
-            <Separator />
-
-            {/* ExactMatch */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium">ExactMatch</span>
-                <span className="text-xs text-muted-foreground">5</span>
+          ) : (
+            /* Runs Summary */
+            <div className="space-y-6">
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium">Total Runs</span>
+                </div>
+                <div className="text-2xl font-bold">{runs.length}</div>
+                <div className="text-sm text-muted-foreground mt-1">
+                  {runs.filter(r => r.status === 'completed').length} completed
+                </div>
               </div>
-              <div className="text-2xl font-bold">60.00%</div>
-              <div className="space-y-2 mt-3">
-                {scoreMetrics.exactMatch.distribution.map((item, i) => (
-                  <div key={i} className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className={`w-3 h-3 rounded ${item.color}`} />
-                      <span className="text-sm">{item.value.toFixed(2)}%</span>
+
+              <Separator />
+
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium">Status Distribution</span>
+                </div>
+                <div className="space-y-2">
+                  {['pending', 'running', 'completed', 'failed', 'cancelled'].map(status => {
+                    const count = runs.filter(r => r.status === status).length
+                    const percentage = runs.length > 0 ? (count / runs.length) * 100 : 0
+                    return (
+                      <div key={status} className="flex items-center justify-between">
+                        <span className="text-sm capitalize">{status}</span>
+                        <div className="flex items-center gap-2">
+                          <Progress value={percentage} className="w-16 h-2" />
+                          <span className="text-sm">{count}</span>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {runs.length > 0 && (
+                <>
+                  <Separator />
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium">Average Metrics</span>
                     </div>
-                    <div className="text-sm">
-                      <span className="text-green-600">{item.change}</span>
-                      <span className="text-muted-foreground ml-2">+{i === 2 ? 1 : 3}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <Separator />
-
-            {/* Duration */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium">Avg Duration</span>
-                <span className="text-xs text-muted-foreground">5</span>
-              </div>
-              <div className="text-2xl font-bold text-blue-600">59.17s</div>
-              <div className="space-y-2 mt-3">
-                {scoreMetrics.duration.avgValues.map((item, i) => (
-                  <div key={i} className="flex items-center justify-between">
-                    <span className="text-sm">{item.value}</span>
-                    <div className="text-sm">
-                      <span className="text-green-600">{item.change}</span>
-                      <span className="text-muted-foreground ml-2">+5</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <Separator />
-
-            {/* LLM Duration */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium">Avg LLM duration</span>
-                <span className="text-xs text-muted-foreground">5</span>
-              </div>
-              <div className="text-2xl font-bold">0.1668s</div>
-              <div className="space-y-2 mt-3">
-                {scoreMetrics.llmDuration.avgValues.map((item, i) => (
-                  <div key={i} className="flex items-center justify-between">
-                    <span className="text-sm">{item.value}</span>
-                    <div className="text-sm">
-                      <span className={i === 0 ? "text-green-600" : "text-red-500"}>{item.change}</span>
-                      <span className="text-muted-foreground ml-2">+{i === 0 ? 4 : 3}</span>
+                    <div className="space-y-2">
+                      {runs.filter(r => r.metrics).length > 0 && (
+                        <div className="text-sm">
+                          <div className="flex justify-between">
+                            <span>Accuracy:</span>
+                            <span>
+                              {(runs.filter(r => r.metrics?.accuracy).reduce((sum, r) => sum + (r.metrics?.accuracy || 0), 0) / runs.filter(r => r.metrics?.accuracy).length * 100).toFixed(1)}%
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Avg Latency:</span>
+                            <span>
+                              {(runs.filter(r => r.metrics?.latency).reduce((sum, r) => sum + (r.metrics?.latency || 0), 0) / runs.filter(r => r.metrics?.latency).length).toFixed(0)}ms
+                            </span>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
-                ))}
-              </div>
+                </>
+              )}
             </div>
-          </div>
+          )}
         </div>
       </div>
-      <ReviewModal open={showReviewModal} onOpenChange={setShowReviewModal} />
+      <ReviewModal
+        open={showReviewModal}
+        onOpenChange={setShowReviewModal}
+        evaluationResults={evaluationResults}
+        runId={selectedRunId}
+      />
     </div>
   )
 }
