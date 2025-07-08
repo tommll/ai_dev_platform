@@ -4,6 +4,9 @@ A FastAPI-based platform for managing LLM experiments, evaluations, and producti
 
 * Design doc: https://sugar-april-5dc.notion.site/LLM-development-platform-228723c39f3c802aa92fed196d4489dc?source=copy_link
 
+![LLM Development Platform Architecture](/public/images/ai_dev_app_1.png)
+![LLM Development Platform Architecture](/public/images/ai_dev_app_2.png)
+
 ## Features
 
 - **Multi-tenant Architecture**: Organizations, projects, and user management
